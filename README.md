@@ -8,6 +8,10 @@ DiffGuard uses [Jev](https://typesafe.ai/) to produce typed risk judgments with 
 
 > DiffGuard prioritizes review attention. It does not certify that code is correct or replace human review.
 
+[View the live demo](https://diffguard-inky.vercel.app/)
+
+![DiffGuard risk analysis demo](./docs/diffguard-demo.png)
+
 ## Demo
 
 The included demo analyzes a deceptively small authentication change that replaces signed-session verification with token decoding.
@@ -23,6 +27,9 @@ Although the diff removes only a few lines, DiffGuard identifies:
 The deterministic policy recommends blocking the change until the risks are addressed.
 
 The public demo is explicitly fixture-backed because TypeSafe temporarily paused new signups during the project’s development. Live Jev integration remains implemented behind `POST /api/analyze`.
+
+A deployed fixture-backed demonstration is available at
+[diffguard-inky.vercel.app](https://diffguard-inky.vercel.app/).
 
 ## Why Jev?
 
