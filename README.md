@@ -248,6 +248,10 @@ Potential extensions include:
 - Repository-specific policy configuration
 - Calibration analysis comparing confidence with reviewer outcomes
 
+## License
+
+DiffGuard is available under the [MIT License](./LICENSE).
+
 ## References
 
 - [TypeSafe AI](https://typesafe.ai/)
