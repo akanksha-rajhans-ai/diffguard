@@ -7,6 +7,8 @@ import {
   vi,
 } from "vitest";
 
+import { analyzeRequestSchema } from "@/server/analysis/request-schema";
+
 import { JevClientError } from "@/server/analysis/jev/client";
 
 const mocks = vi.hoisted(() => ({
@@ -121,4 +123,138 @@ describe("POST /api/analyze", () => {
       },
     });
   });
+  it("returns actionable validation issues", async () => {
+  const validation = analyzeRequestSchema.safeParse({
+    title: "x",
+    diff: "",
+  });
+
+  if (validation.success) {
+    throw new Error("Expected the test request to be invalid.");
+  }
+
+  mocks.analyzePullRequest.mockRejectedValue(validation.error);
+
+  const response = await POST(
+    new Request("http://localhost/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "x",
+        diff: "",
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(400);
+
+  await expect(response.json()).resolves.toMatchObject({
+    error: {
+      code: "invalid_request",
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: ["diff"],
+        }),
+      ]),
+    },
+  });
+});
+
+it.each([
+  {
+    providerCode: "configuration",
+    expectedStatus: 503,
+    expectedCode: "service_unavailable",
+  },
+  {
+    providerCode: "rate_limit",
+    expectedStatus: 503,
+    expectedCode: "provider_busy",
+  },
+  {
+    providerCode: "authentication",
+    expectedStatus: 502,
+    expectedCode: "provider_error",
+  },
+  {
+    providerCode: "network",
+    expectedStatus: 502,
+    expectedCode: "provider_error",
+  },
+  {
+    providerCode: "upstream",
+    expectedStatus: 502,
+    expectedCode: "provider_error",
+  },
+  {
+    providerCode: "invalid_response",
+    expectedStatus: 502,
+    expectedCode: "provider_error",
+  },
+] as const)(
+  "maps $providerCode to a safe public error",
+  async ({
+    providerCode,
+    expectedStatus,
+    expectedCode,
+  }) => {
+    mocks.analyzePullRequest.mockRejectedValue(
+      new JevClientError(
+        providerCode,
+        "Sensitive internal provider details.",
+      ),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Update session validation",
+          diff: "-verify(token)\n+decode(token)",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(expectedStatus);
+
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: expectedCode,
+      },
+    });
+  },
+);
+
+it("returns a generic response for unexpected failures", async () => {
+  mocks.analyzePullRequest.mockRejectedValue(
+    new Error("Sensitive implementation details."),
+  );
+
+  const response = await POST(
+    new Request("http://localhost/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Update session validation",
+        diff: "-verify(token)\n+decode(token)",
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(500);
+
+  await expect(response.json()).resolves.toEqual({
+    error: {
+      code: "internal_error",
+      message: "DiffGuard could not complete the analysis.",
+    },
+  });
+});
 });

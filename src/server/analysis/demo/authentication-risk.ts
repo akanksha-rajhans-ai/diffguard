@@ -7,9 +7,9 @@ import type {
 import { evaluateReviewPolicy } from "../policy";
 
 function judgment<T extends string>(
-  value: T,
+  value: NoInfer<T>,
   probabilities: Record<T, number>,
-  confidence: number,
+  confidence = 0.9,
 ): Judgment<T> {
   return {
     value,

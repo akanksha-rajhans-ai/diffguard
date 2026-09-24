@@ -137,3 +137,98 @@ describe("requestJevAssessment", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+it("rejects a successful response containing invalid JSON", async () => {
+  const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(
+    new Response("not-json", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }),
+  );
+
+  await expect(
+    requestJevAssessment(request, {
+      apiKey: "test-api-key",
+      fetchImpl,
+    }),
+  ).rejects.toMatchObject({
+    code: "invalid_response",
+  });
+});
+
+it.each([
+  {
+    status: 429,
+    expectedCode: "rate_limit",
+  },
+  {
+    status: 500,
+    expectedCode: "upstream",
+  },
+])(
+  "maps HTTP $status to $expectedCode",
+  async ({ status, expectedCode }) => {
+    const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(
+      new Response(null, { status }),
+    );
+
+    await expect(
+      requestJevAssessment(request, {
+        apiKey: "test-api-key",
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      code: expectedCode,
+      status,
+    });
+  },
+);
+
+it("maps connection failures without exposing their details", async () => {
+  const fetchImpl = vi
+    .fn<FetchLike>()
+    .mockRejectedValue(
+      new Error("Internal network details must remain private"),
+    );
+
+  await expect(
+    requestJevAssessment(request, {
+      apiKey: "test-api-key",
+      fetchImpl,
+    }),
+  ).rejects.toMatchObject({
+    code: "network",
+    message: "DiffGuard could not connect to Jev.",
+  });
+});
+
+it("aborts requests that exceed the configured timeout", async () => {
+  const fetchImpl = vi.fn<FetchLike>(
+    (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => {
+            reject(
+              new DOMException(
+                "The operation was aborted.",
+                "AbortError",
+              ),
+            );
+          },
+          { once: true },
+        );
+      }),
+  );
+
+  await expect(
+    requestJevAssessment(request, {
+      apiKey: "test-api-key",
+      timeoutMs: 1,
+      fetchImpl,
+    }),
+  ).rejects.toMatchObject({
+    code: "timeout",
+  });
+});

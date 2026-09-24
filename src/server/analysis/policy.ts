@@ -37,10 +37,14 @@ function expectedContribution<T extends string>(
   probabilities: Record<T, number>,
   weights: Record<T, number>,
 ): number {
+  const entries = Object.entries(probabilities) as Array<
+    [T, number]
+  >;
+
   return Math.round(
-    Object.entries(probabilities).reduce(
+    entries.reduce(
       (total, [key, probability]) =>
-        total + probability * weights[key as T],
+        total + probability * weights[key],
       0,
     ),
   );
