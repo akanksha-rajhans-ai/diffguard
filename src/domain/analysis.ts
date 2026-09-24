@@ -52,17 +52,17 @@ export interface Judgment<T extends string> {
 
 export interface PullRequestSnapshot {
   id: string;
-  repository: string;
-  number: number;
   title: string;
   description: string;
-  author: string;
-  baseBranch: string;
-  headBranch: string;
-  additions: number;
-  deletions: number;
-  changedFiles: number;
   diff: string;
+  repository?: string;
+  number?: number;
+  author?: string;
+  baseBranch?: string;
+  headBranch?: string;
+  additions?: number;
+  deletions?: number;
+  changedFiles?: number;
 }
 
 export interface ReviewSignals {
@@ -92,6 +92,8 @@ export interface AnalysisMetadata {
   provider: "fixture" | "jev";
   model?: string;
   durationMs?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   analyzedAt: string;
 }
 
